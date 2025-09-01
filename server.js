@@ -60,6 +60,16 @@ function checkAuth(req, res, next) {
     res.redirect('/login.html');
 }
 
+// --- Homepage Route ---
+// This tells the server to send dryfruits.html when someone visits the root URL.
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dryfruits.html'));
+});
+
+// --- Public API Endpoints ---
+app.post('/api/login', async (req, res) => {
+//... rest of the file
+
 // --- Public API Endpoints ---
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
