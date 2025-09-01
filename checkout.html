@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Dry Fruits Store</title>
+    <link rel="stylesheet" href="css/dryfruits.css">
+    <link rel="stylesheet" href="css/checkout.css">
+</head>
+<body>
+    <header>
+        <h1><a href="dryfruits.html" class="back-link">Checkout</a></h1>
+    </header>
+
+    <main class="checkout-container">
+        <form id="checkout-form">
+            <div class="checkout-section">
+                <h2>Billing Information</h2>
+                <div class="form-grid">
+                    <input type="text" id="billing-name" placeholder="Full Name">
+                    <input type="email" id="billing-email" placeholder="Email">
+                    <input type="text" id="billing-address" placeholder="Address">
+                    <input type="text" id="billing-city" placeholder="City">
+                    <input type="text" id="billing-state" placeholder="State">
+                    <input type="text" id="billing-zip" placeholder="Zip Code">
+                </div>
+            </div>
+
+            <div class="checkout-section">
+                <h2>Shipping Information</h2>
+                <label><input type="checkbox" id="same-as-billing"> Same as Billing</label>
+                <div class="form-grid" id="shipping-info">
+                    <input type="text" id="shipping-name" placeholder="Full Name">
+                    <input type="text" id="shipping-address" placeholder="Address">
+                    <input type="text" id="shipping-city" placeholder="City">
+                    <input type="text" id="shipping-state" placeholder="State">
+                    <input type="text" id="shipping-zip" placeholder="Zip Code">
+                </div>
+            </div>
+
+            <div class="checkout-section">
+    <h2>Payment Details</h2>
+    <div class="upi-payment-section">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" alt="UPI Logo">
+        <p>Enter your UPI ID to complete the payment.</p>
+        <input type="text" id="upi-id" placeholder="yourname@bank" required>
+    </div>
+</div>
+
+            <button type="submit" class="place-order-button">Place Order</button>
+        </form>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Premium Dry Fruits. All rights reserved.</p>
+    </footer>
+
+    <script src="js/checkout.js"></script>
+</body>
+</html>

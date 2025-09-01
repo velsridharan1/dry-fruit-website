@@ -1,0 +1,56 @@
+/* css/order-confirmation.css */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400&display=swap');
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #FBF9F1;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+.confirmation-container {
+    max-width: 800px;
+    margin: 4rem auto;
+    padding: 2rem;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.confirmation-container h1 {
+    font-family: 'Playfair Display', serif;
+    color: #2C5F2D;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.confirmation-container p {
+    font-size: 1.2rem;
+    line-height: 1.6;
+}
+
+#order-number {
+    font-weight: bold;
+    color: #558B2F;
+    font-size: 1.5rem;
+    margin: 1rem 0;
+    display: block;
+}
+
+.back-to-home {
+    display: inline-block;
+    margin-top: 2rem;
+    padding: 0.75rem 1.5rem;
+    background-color: #2C5F2D;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.back-to-home:hover {
+    background-color: #558B2F;
+}
