@@ -7,43 +7,47 @@ const session = require('express-session');
 
 // --- Environment Variable Check ---
 // Exit immediately if essential secrets are not configured.
-if (!process.env.SESSION_SECRET || !process.env.GOOGLE_CREDENTIALS_JSON) {
-    console.error("FATAL ERROR: Required environment variables (SESSION_SECRET, GOOGLE_CREDENTIALS_JSON) are not set.");
+if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || !process.env.GOOGLE_CREDENTIALS_JSON)) {
+    console.error("FATAL ERROR: In production, required environment variables (SESSION_SECRET, GOOGLE_CREDENTIALS_JSON) must be set.");
     process.exit(1);
 }
 
 const app = express();
-// The hosting provider (like Render) will set the PORT environment variable.
 const port = process.env.PORT || 3001;
 
 // --- Middleware ---
 app.use(express.json());
-
-// Configure CORS for your public frontend URL when you have it.
-// For now, we can keep it open, but for production, you should restrict it.
-// Example: const corsOptions = { origin: 'https://your-frontend-url.onrender.com' };
-app.use(cors()); 
-
+app.use(cors());
 app.use(express.static(__dirname));
 
 // --- Session Configuration ---
+// Use a default secret for local development if the environment variable isn't set.
+const sessionSecret = process.env.SESSION_SECRET || 'a-default-secret-for-local-dev';
 app.use(session({
-    secret: process.env.SESSION_SECRET, // Read secret from environment variable
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: true,
     cookie: { 
-        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true 
     }
 }));
 
 // --- BigQuery Configuration ---
-// Parse the JSON credentials from the environment variable
-const bigqueryCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
-const bigquery = new BigQuery({
-  projectId: bigqueryCredentials.project_id,
-  credentials: bigqueryCredentials,
-});
+let bigquery;
+if (process.env.GOOGLE_CREDENTIALS_JSON) {
+    const bigqueryCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+    bigquery = new BigQuery({
+      projectId: bigqueryCredentials.project_id,
+      credentials: bigqueryCredentials,
+    });
+} else {
+    // Fallback for local development using the JSON file
+    bigquery = new BigQuery({
+        projectId: 'calcium-hope-460307-p3',
+        keyFilename: 'calcium-hope-460307-p3-2260b71c02f0.json',
+    });
+}
 
 const datasetId = 'ORDERS';
 const ordersTableId = 'orders';
@@ -65,10 +69,6 @@ function checkAuth(req, res, next) {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'dryfruits.html'));
 });
-
-// --- Public API Endpoints ---
-app.post('/api/login', async (req, res) => {
-//... rest of the file
 
 // --- Public API Endpoints ---
 app.post('/api/login', async (req, res) => {
@@ -94,7 +94,70 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// ... (The rest of your API routes like /api/logout, /api/orders, etc. remain the same) ...
+app.get('/api/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ success: false, message: 'Failed to log out.' });
+        }
+        res.redirect('/login.html');
+    });
+});
+
+app.post('/api/orders', async (req, res) => {
+  try {
+    const receivedData = req.body;
+    const tempFileName = `order-debug-${Date.now()}.json`;
+    const tempFilePath = path.join(__dirname, tempFileName);
+
+    const cleanPayload = {
+        order_id: String(receivedData.order_id || ''),
+        order_date: receivedData.order_date,
+        customer_name: String(receivedData.customer_name || ''),
+        customer_email: String(receivedData.customer_email || ''),
+        shipping_address: String(receivedData.shipping_address || ''),
+        billing_address: String(receivedData.billing_address || ''),
+        order_items: Array.isArray(receivedData.order_items) ? receivedData.order_items : [],
+        total_amount: Number(receivedData.total_amount || 0),
+        status: 'Pending'
+    };
+
+    let fileContent = JSON.stringify(cleanPayload);
+    fileContent = fileContent.replace(/"(price|total_amount)":(\d+)(?![\.\d])/g, '"$1":$2.0');
+    await fs.writeFile(tempFilePath, fileContent);
+
+    const metadata = {
+        sourceFormat: 'NEWLINE_DELIMITED_JSON',
+        schema: {
+            fields: [
+                { name: 'order_id', type: 'STRING', mode: 'REQUIRED' },
+                { name: 'order_date', type: 'TIMESTAMP', mode: 'REQUIRED' },
+                { name: 'customer_name', type: 'STRING' },
+                { name: 'customer_email', type: 'STRING' },
+                { name: 'shipping_address', type: 'STRING' },
+                { name: 'billing_address', type: 'STRING' },
+                { name: 'order_items', type: 'RECORD', mode: 'REPEATED', fields: [
+                    { name: 'product_name', type: 'STRING' }, { name: 'size', type: 'STRING' },
+                    { name: 'quantity', type: 'INTEGER' }, { name: 'price', type: 'FLOAT' },
+                ]},
+                { name: 'total_amount', type: 'FLOAT' },
+                { name: 'status', type: 'STRING' },
+            ],
+        },
+    };
+
+    await bigquery.dataset(datasetId).table(ordersTableId).load(tempFilePath, metadata);
+    await fs.unlink(tempFilePath);
+
+    console.log(`--- [SUCCESS] Order ${cleanPayload.order_id} loaded. ---`);
+    res.status(200).json({ success: true, message: 'Order placed successfully!' });
+
+  } catch (error) {
+    console.error('--- [ERROR] Placing order:', error);
+    const errorMessage = error.errors ? error.errors[0].message : error.message;
+    res.status(500).json({ success: false, message: 'Failed to place order.', error: errorMessage });
+  }
+});
+
 // --- Protected Admin Routes ---
 app.get('/admin.html', checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
@@ -172,7 +235,6 @@ app.put('/api/admin/orders/:orderId', checkAuth, async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to update order status.', error: error.message });
     }
 });
-
 
 // --- Server Startup ---
 const server = app.listen(port, () => {
