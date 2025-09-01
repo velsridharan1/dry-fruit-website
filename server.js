@@ -6,7 +6,6 @@ const path = require('path');
 const session = require('express-session');
 
 // --- Environment Variable Check ---
-// Exit immediately if essential secrets are not configured.
 if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || !process.env.GOOGLE_CREDENTIALS_JSON)) {
     console.error("FATAL ERROR: In production, required environment variables (SESSION_SECRET, GOOGLE_CREDENTIALS_JSON) must be set.");
     process.exit(1);
@@ -18,10 +17,8 @@ const port = process.env.PORT || 3001;
 // --- Middleware ---
 app.use(express.json());
 app.use(cors());
-app.use(express.static(__dirname));
 
 // --- Session Configuration ---
-// Use a default secret for local development if the environment variable isn't set.
 const sessionSecret = process.env.SESSION_SECRET || 'a-default-secret-for-local-dev';
 app.use(session({
     secret: sessionSecret,
@@ -42,7 +39,6 @@ if (process.env.GOOGLE_CREDENTIALS_JSON) {
       credentials: bigqueryCredentials,
     });
 } else {
-    // Fallback for local development using the JSON file
     bigquery = new BigQuery({
         projectId: 'calcium-hope-460307-p3',
         keyFilename: 'calcium-hope-460307-p3-2260b71c02f0.json',
@@ -64,13 +60,25 @@ function checkAuth(req, res, next) {
     res.redirect('/login.html');
 }
 
-// --- Homepage Route ---
-// This tells the server to send dryfruits.html when someone visits the root URL.
+// --- Routes ---
+
+// ** FIX: Define specific routes BEFORE the general static file server **
+
+// Homepage Route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'dryfruits.html'));
 });
 
-// --- Public API Endpoints ---
+// Protected Admin Page Route
+app.get('/admin.html', checkAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// ** FIX: The static file server is now last, to catch all other files **
+app.use(express.static(__dirname));
+
+// --- API Endpoints ---
+
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -156,11 +164,6 @@ app.post('/api/orders', async (req, res) => {
     const errorMessage = error.errors ? error.errors[0].message : error.message;
     res.status(500).json({ success: false, message: 'Failed to place order.', error: errorMessage });
   }
-});
-
-// --- Protected Admin Routes ---
-app.get('/admin.html', checkAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
 app.get('/api/admin/orders', checkAuth, async (req, res) => {
