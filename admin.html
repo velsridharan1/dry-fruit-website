@@ -12,21 +12,58 @@
         <button id="logout-btn" class="logout-button">Logout</button>
     </header>
     <main>
-        <div class="order-list-container">
-            <h2>Current Orders</h2>
-            <table id="orders-table">
+        <div class="tab-container">
+            <button class="tab-link active" data-tab="open-orders">Open Orders</button>
+            <button class="tab-link" data-tab="all-orders">All Orders</button>
+        </div>
+
+        <!-- Open Orders Tab Content -->
+        <div id="open-orders" class="tab-content active">
+            <h2>Open Orders (Pending)</h2>
+            <div id="bulk-update-section" class="bulk-update-controls">
+                <label for="bulk-status-select">Update status of selected orders to:</label>
+                <select id="bulk-status-select">
+                    <option value="Processing">Processing</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+                <button id="bulk-update-btn">Update Selected</button>
+            </div>
+            <table id="open-orders-table" class="orders-table">
                 <thead>
                     <tr>
+                        <th><input type="checkbox" id="select-all-checkbox"></th>
                         <th>Order ID</th>
-                        <th>Order Date</th>
-                        <th>Customer Name</th>
-                        <th>Total Amount</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Total</th>
                         <th>Status</th>
-                        <th>Action</th>
+                        <th>Update</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Order rows will be inserted here by JavaScript -->
+                    <!-- Rows will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- All Orders Tab Content -->
+        <div id="all-orders" class="tab-content">
+            <h2>All Orders</h2>
+            <table id="all-orders-table" class="orders-table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Update</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows will be populated by JavaScript -->
                 </tbody>
             </table>
         </div>

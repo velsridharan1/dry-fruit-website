@@ -4,6 +4,7 @@ const cors = require('cors');
 const fs = require('fs/promises');
 const path = require('path');
 const session = require('express-session');
+const os = require('os');
 
 // --- Environment Variable Check ---
 if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || !process.env.GOOGLE_CREDENTIALS_JSON)) {
@@ -18,27 +19,30 @@ const port = process.env.PORT || 3001;
 app.use(express.json());
 app.use(cors());
 
+// Trust the first proxy, which is required for sessions to work on App Engine
+app.set('trust proxy', 1); 
+
 // --- Session Configuration ---
 const sessionSecret = process.env.SESSION_SECRET || 'a-default-secret-for-local-dev';
 app.use(session({
     secret: sessionSecret,
-    resave: false,
-    saveUninitialized: true,
+    resave: false, // Don't save session if unmodified
+    saveUninitialized: false, // Don't create session until something stored
     cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true 
+        secure: process.env.NODE_ENV === 'production', // Only send cookie over HTTPS in production
+        httpOnly: true, // Prevent client-side JS from accessing the cookie
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Required for cross-domain cookies
+        path: '/', // Make the cookie available across the entire site
     }
 }));
 
 // --- BigQuery Configuration ---
 let bigquery;
-if (process.env.GOOGLE_CREDENTIALS_JSON) {
-    const bigqueryCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
-    bigquery = new BigQuery({
-      projectId: bigqueryCredentials.project_id,
-      credentials: bigqueryCredentials,
-    });
+// When in production on GCP, the library will use Application Default Credentials.
+if (process.env.NODE_ENV === 'production') {
+    bigquery = new BigQuery();
 } else {
+    // For local development, use the key file.
     bigquery = new BigQuery({
         projectId: 'calcium-hope-460307-p3',
         keyFilename: 'calcium-hope-460307-p3-2260b71c02f0.json',
@@ -92,7 +96,14 @@ app.post('/api/login', async (req, res) => {
         if (rows.length > 0) {
             req.session.isAuthenticated = true;
             req.session.username = username;
-            res.json({ success: true, message: 'Login successful' });
+            // Explicitly save the session before sending the response
+            req.session.save(err => {
+                if (err) {
+                    console.error('--- [ERROR] Session save failed:', err);
+                    return res.status(500).json({ success: false, message: 'Session save failed.' });
+                }
+                res.json({ success: true, message: 'Login successful' });
+            });
         } else {
             res.status(401).json({ success: false, message: 'Invalid username or password' });
         }
@@ -114,8 +125,9 @@ app.get('/api/logout', (req, res) => {
 app.post('/api/orders', async (req, res) => {
   try {
     const receivedData = req.body;
+    // Use the OS's temporary directory, which is writable in App Engine
     const tempFileName = `order-debug-${Date.now()}.json`;
-    const tempFilePath = path.join(__dirname, tempFileName);
+    const tempFilePath = path.join(os.tmpdir(), tempFileName);
 
     const cleanPayload = {
         order_id: String(receivedData.order_id || ''),
@@ -130,6 +142,7 @@ app.post('/api/orders', async (req, res) => {
     };
 
     let fileContent = JSON.stringify(cleanPayload);
+    // This regex ensures that numbers without decimal points are formatted as floats for BigQuery.
     fileContent = fileContent.replace(/"(price|total_amount)":(\d+)(?![\.\d])/g, '"$1":$2.0');
     await fs.writeFile(tempFilePath, fileContent);
 
@@ -166,7 +179,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-app.get('/api/admin/orders', checkAuth, async (req, res) => {
+app.put('/api/admin/orders/:orderId', checkAuth, async (req, res) => {
     try {
         const query = `SELECT * FROM \`${datasetId}.${ordersTableId}\` ORDER BY order_date DESC`;
         const [rows] = await bigquery.query(query);
@@ -176,6 +189,40 @@ app.get('/api/admin/orders', checkAuth, async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to fetch orders.' });
     }
 });
+
+// New endpoint for bulk status updates
+app.put('/api/admin/orders/bulk-update', checkAuth, async (req, res) => {
+    const { orderIds, status } = req.body;
+
+    if (!Array.isArray(orderIds) || orderIds.length === 0 || !status) {
+        return res.status(400).json({ success: false, message: 'Order IDs and status are required.' });
+    }
+
+    try {
+        // BigQuery's UPDATE statement is the most efficient way to do this.
+        // We use UNNEST to handle the array of order IDs.
+        const query = `
+            UPDATE \`${datasetId}.${ordersTableId}\`
+            SET status = @status
+            WHERE order_id IN UNNEST(@orderIds)
+        `;
+        const options = {
+            query: query,
+            params: { 
+                status: status,
+                orderIds: orderIds 
+            },
+        };
+        await bigquery.query(options);
+        console.log(`--- [SUCCESS] Bulk updated ${orderIds.length} orders to ${status}. ---`);
+        res.status(200).json({ success: true, message: `Successfully updated ${orderIds.length} orders.` });
+
+    } catch (error) {
+        console.error('--- [ERROR] Bulk updating orders:', error);
+        res.status(500).json({ success: false, message: 'An internal server error occurred during bulk update.' });
+    }
+});
+
 
 app.put('/api/admin/orders/:orderId', checkAuth, async (req, res) => {
     const { orderId } = req.params;
@@ -236,6 +283,39 @@ app.put('/api/admin/orders/:orderId', checkAuth, async (req, res) => {
     } catch (error) {
         console.error(`--- [ERROR] Updating order ${orderId}:`, error);
         res.status(500).json({ success: false, message: 'Failed to update order status.', error: error.message });
+    }
+});
+
+// New endpoint for bulk status updates
+app.put('/api/admin/orders/bulk-update', checkAuth, async (req, res) => {
+    const { orderIds, status } = req.body;
+
+    if (!Array.isArray(orderIds) || orderIds.length === 0 || !status) {
+        return res.status(400).json({ success: false, message: 'Order IDs and status are required.' });
+    }
+
+    try {
+        // BigQuery's UPDATE statement is the most efficient way to do this.
+        // We use UNNEST to handle the array of order IDs.
+        const query = `
+            UPDATE \`${datasetId}.${ordersTableId}\`
+            SET status = @status
+            WHERE order_id IN UNNEST(@orderIds)
+        `;
+        const options = {
+            query: query,
+            params: { 
+                status: status,
+                orderIds: orderIds 
+            },
+        };
+        await bigquery.query(options);
+        console.log(`--- [SUCCESS] Bulk updated ${orderIds.length} orders to ${status}. ---`);
+        res.status(200).json({ success: true, message: `Successfully updated ${orderIds.length} orders.` });
+
+    } catch (error) {
+        console.error('--- [ERROR] Bulk updating orders:', error);
+        res.status(500).json({ success: false, message: 'An internal server error occurred during bulk update.' });
     }
 });
 

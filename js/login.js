@@ -7,7 +7,7 @@ document.getElementById('login-form').addEventListener('submit', async (event) =
     errorMessageElement.textContent = '';
 
     try {
-        const response = await fetch('http://localhost:3001/api/login', {
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -18,8 +18,8 @@ document.getElementById('login-form').addEventListener('submit', async (event) =
         const result = await response.json();
 
         if (response.ok && result.success) {
-            // FIX: Use the full, absolute URL for the redirect
-            window.location.href = 'http://localhost:3001/admin.html';
+            // Use a relative URL for the redirect to work on both localhost and production
+            window.location.href = '/admin.html';
         } else {
             errorMessageElement.textContent = result.message || 'Login failed. Please try again.';
         }

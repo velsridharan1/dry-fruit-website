@@ -14,6 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
         checkoutForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const submitButton = checkoutForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+            }
+
             // 1. Generate Order Number
             const generateOrderNumber = () => {
                 const timestamp = Date.now();
@@ -58,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 5. Send Data to the Backend
             try {
-                const response = await fetch('http://localhost:3001/api/orders', {
+                const response = await     fetch('/api/orders', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -79,6 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('There was a problem with the fetch operation:', error);
                 alert('Failed to submit order. Please try again.');
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Place Order';
+                }
             }
         });
     }

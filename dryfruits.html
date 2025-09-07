@@ -27,53 +27,53 @@
         <section class="products">
             <h2>Our Premium Selection</h2>
             <div class="product-grid">
-                <div class="product-card">
+                <div class="product-card" data-product="almonds">
                     <a href="almonds.html" class="product-link">
                         <img src="assets/almonds.jpg" alt="Premium Almonds">
                         <h3>Almonds</h3>
                     </a>
                     <p class="price">₹2760 / kg</p>
-                    <button>Add to Cart</button>
+                    <button class="open-modal-btn">Add to Cart</button>
                 </div>
-                <div class="product-card">
+                <div class="product-card" data-product="cashews">
                     <a href="cashews.html" class="product-link">
                         <img src="assets/cashews.jpg" alt="Creamy Cashews">
                         <h3>Cashews</h3>
                     </a>
                     <p class="price">₹3315 / kg</p>
-                    <button>Add to Cart</button>
+                    <button class="open-modal-btn">Add to Cart</button>
                 </div>
-                <div class="product-card">
+                <div class="product-card" data-product="walnuts">
                     <a href="walnuts.html" class="product-link">
                         <img src="assets/walnuts.jpeg" alt="Crunchy Walnuts">
                         <h3>Walnuts</h3>
                     </a>
                     <p class="price">₹2210 / kg</p>
-                    <button>Add to Cart</button>
+                    <button class="open-modal-btn">Add to Cart</button>
                 </div>
-                <div class="product-card">
+                <div class="product-card" data-product="pistachios">
                     <a href="pistachios.html" class="product-link">
                         <img src="assets/pistachios.jpg" alt="Savory Pistachios">
                         <h3>Pistachios</h3>
                     </a>
                     <p class="price">₹3680 / kg</p>
-                    <button>Add to Cart</button>
+                    <button class="open-modal-btn">Add to Cart</button>
                 </div>
-                <div class="product-card">
+                <div class="product-card" data-product="raisins">
                     <a href="raisins.html" class="product-link">
                         <img src="assets/raisins.jpeg" alt="Sweet Raisins">
                         <h3>Raisins</h3>
                     </a>
                     <p class="price">₹1840 / kg</p>
-                    <button>Add to Cart</button>
+                    <button class="open-modal-btn">Add to Cart</button>
                 </div>
-                <div class="product-card">
+                <div class="product-card" data-product="figs">
                     <a href="figs.html" class="product-link">
                         <img src="assets/figs.jpeg" alt="Dried Figs">
                         <h3>Figs</h3>
                     </a>
                     <p class="price">₹2945 / kg</p>
-                    <button>Add to Cart</button>
+                    <button class="open-modal-btn">Add to Cart</button>
                 </div>
             </div>
         </section>
@@ -83,6 +83,16 @@
         <p>&copy; 2025 Premium Dry Fruits. All rights reserved.</p>
     </footer>
 
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div class="modal-body">
+                <!-- Product details will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="js/cart.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/dryfruits.js"></script>
 </body>

@@ -1,52 +1,96 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Tab switching logic
+    const tabLinks = document.querySelectorAll('.tab-link');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            const tabId = link.dataset.tab;
+
+            tabLinks.forEach(innerLink => innerLink.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            link.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+
     fetchOrders();
 
-    // Add event listener for the new logout button
     const logoutButton = document.getElementById('logout-btn');
     if (logoutButton) {
         logoutButton.addEventListener('click', () => {
-            // Redirect to the server's logout endpoint
             window.location.href = '/api/logout';
+        });
+    }
+
+    // Bulk update logic
+    const bulkUpdateBtn = document.getElementById('bulk-update-btn');
+    if (bulkUpdateBtn) {
+        bulkUpdateBtn.addEventListener('click', handleBulkUpdate);
+    }
+
+    // "Select All" checkbox logic
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('click', () => {
+            document.querySelectorAll('#open-orders-table tbody .order-checkbox').forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
         });
     }
 });
 
 async function fetchOrders() {
     try {
-        // Use absolute URL to be safe
-        const response = await fetch('http://localhost:3001/api/admin/orders');
+        const response = await fetch('/api/admin/orders', { credentials: 'include' });
         if (!response.ok) {
-            // If unauthorized, the server should redirect, but we can also handle it here
-            if (response.status === 401) {
-                window.location.href = '/login.html';
-            }
+            if (response.status === 401) window.location.href = '/login.html';
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const orders = await response.json();
-        populateOrdersTable(orders);
+        
+        // Filter orders for the two tabs
+        const openOrders = orders.filter(order => order.status === 'Pending');
+        const allOrders = orders;
+
+        populateOrdersTable(openOrders, 'open-orders-table');
+        populateOrdersTable(allOrders, 'all-orders-table');
+
     } catch (error) {
         console.error('Error fetching orders:', error);
-        const tableBody = document.querySelector('#orders-table tbody');
-        tableBody.innerHTML = '<tr><td colspan="6">Error loading orders. Please try logging in again.</td></tr>';
+        const openTableBody = document.querySelector('#open-orders-table tbody');
+        const allTableBody = document.querySelector('#all-orders-table tbody');
+        const errorMessage = '<tr><td colspan="7">Error loading orders. Please try logging in again.</td></tr>';
+        if (openTableBody) openTableBody.innerHTML = errorMessage;
+        if (allTableBody) allTableBody.innerHTML = '<tr><td colspan="6">Error loading orders. Please try logging in again.</td></tr>';
     }
 }
 
-function populateOrdersTable(orders) {
-    const tableBody = document.querySelector('#orders-table tbody');
+function populateOrdersTable(orders, tableId) {
+    const tableBody = document.querySelector(`#${tableId} tbody`);
+    if (!tableBody) return;
+
     tableBody.innerHTML = ''; // Clear existing rows
+    const isBulkTable = tableId === 'open-orders-table';
 
     if (orders.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="6">No orders found.</td></tr>';
+        const colspan = isBulkTable ? 7 : 6;
+        tableBody.innerHTML = `<tr><td colspan="${colspan}">No orders found.</td></tr>`;
         return;
     }
 
     orders.forEach(order => {
         const row = document.createElement('tr');
-        // Ensure order_date and total_amount exist before processing
         const orderDate = order.order_date && order.order_date.value ? new Date(order.order_date.value).toLocaleString() : 'N/A';
         const totalAmount = typeof order.total_amount === 'number' ? order.total_amount.toFixed(2) : 'N/A';
 
-        row.innerHTML = `
+        let rowHtml = '';
+        if (isBulkTable) {
+            rowHtml += `<td><input type="checkbox" class="order-checkbox" data-order-id="${order.order_id}"></td>`;
+        }
+        
+        rowHtml += `
             <td>${order.order_id}</td>
             <td>${orderDate}</td>
             <td>${order.customer_name}</td>
@@ -54,47 +98,63 @@ function populateOrdersTable(orders) {
             <td>
                 <select class="status-select" data-order-id="${order.order_id}">
                     <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                    <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing</option>
                     <option value="Shipped" ${order.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
                     <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
                     <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
                 </select>
             </td>
-            <td><button class="update-btn" data-order-id="${order.order_id}">Update</button></td>
+            <td><button class="update-status-btn" data-order-id="${order.order_id}">Update</button></td>
         `;
+        row.innerHTML = rowHtml;
         tableBody.appendChild(row);
     });
 
-    // Add event listeners for update buttons
-    document.querySelectorAll('.update-btn').forEach(button => {
-        button.addEventListener('click', handleStatusUpdate);
+    // Add event listeners for individual update buttons
+    document.querySelectorAll('.update-status-btn').forEach(button => {
+        button.addEventListener('click', handleSingleUpdate);
     });
 }
 
-async function handleStatusUpdate(event) {
+async function handleSingleUpdate(event) {
     const orderId = event.target.dataset.orderId;
-    const statusSelect = document.querySelector(`.status-select[data-order-id="${orderId}"]`);
-    const newStatus = statusSelect.value;
+    const status = document.querySelector(`.status-select[data-order-id="${orderId}"]`).value;
+    await updateOrderStatus([orderId], status);
+}
 
+async function handleBulkUpdate() {
+    const selectedCheckboxes = document.querySelectorAll('#open-orders-table tbody .order-checkbox:checked');
+    const orderIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.orderId);
+    const status = document.getElementById('bulk-status-select').value;
+
+    if (orderIds.length === 0) {
+        alert('Please select at least one order to update.');
+        return;
+    }
+
+    await updateOrderStatus(orderIds, status);
+}
+
+async function updateOrderStatus(orderIds, status) {
     try {
-        const response = await fetch(`http://localhost:3001/api/admin/orders/${orderId}`, {
+        const response = await fetch(`/api/admin/orders/bulk-update`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ status: newStatus }),
+            body: JSON.stringify({ orderIds, status }),
+            credentials: 'include'
         });
 
         if (!response.ok) {
-            const errorResult = await response.json();
-            throw new Error(errorResult.message || 'Failed to update status.');
+            throw new Error('Failed to update order status.');
         }
 
-        const result = await response.json();
-        alert(result.message);
-        fetchOrders(); // Refresh the list
+        alert(`Successfully updated ${orderIds.length} order(s) to "${status}".`);
+        fetchOrders(); // Refresh the tables
 
     } catch (error) {
-        console.error('Error updating status:', error);
-        alert(`Error: ${error.message}`);
+        console.error('Error updating order status:', error);
+        alert('An error occurred while updating orders.');
     }
 }
