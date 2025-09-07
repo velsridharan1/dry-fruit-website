@@ -7,8 +7,8 @@ const session = require('express-session');
 const os = require('os');
 
 // --- Environment Variable Check ---
-if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || !process.env.GOOGLE_CREDENTIALS_JSON)) {
-    console.error("FATAL ERROR: In production, required environment variables (SESSION_SECRET, GOOGLE_CREDENTIALS_JSON) must be set.");
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    console.error("FATAL ERROR: In production, the SESSION_SECRET environment variable must be set.");
     process.exit(1);
 }
 
