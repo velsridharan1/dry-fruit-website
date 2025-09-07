@@ -1,0 +1,6 @@
+runtime: nodejs20
+automatic_scaling:
+  max_instances: 2
+env_variables:
+  SESSION_SECRET: 'a-very-secret-and-long-random-string-for-sessions-replace-if-you-want'
+
