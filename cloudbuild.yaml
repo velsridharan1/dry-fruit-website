@@ -9,3 +9,6 @@ steps:
 
 # Set a timeout for the build to prevent it from running indefinitely
 timeout: '1600s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
