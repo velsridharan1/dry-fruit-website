@@ -158,3 +158,35 @@ h2 {
     width: 100%;
     border-collapse: collapse;
 }
+
+/* Summary Box Styles */
+.summary-container {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.summary-box {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex-grow: 1;
+    text-align: center;
+}
+
+.summary-box h4 {
+    margin-top: 0;
+    color: #333;
+}
+
+.summary-box p {
+    margin: 0.5rem 0;
+    font-size: 1.2rem;
+    color: #555;
+}
+
+.summary-box span {
+    font-weight: bold;
+    color: #000;
+}

@@ -57,6 +57,10 @@ async function fetchOrders() {
         populateOrdersTable(openOrders, 'open-orders-table');
         populateOrdersTable(allOrders, 'all-orders-table');
 
+        // Update summary boxes
+        updateSummary(openOrders, 'open');
+        updateSummary(allOrders, 'all');
+
     } catch (error) {
         console.error('Error fetching orders:', error);
         const openTableBody = document.querySelector('#open-orders-table tbody');
@@ -65,6 +69,14 @@ async function fetchOrders() {
         if (openTableBody) openTableBody.innerHTML = errorMessage;
         if (allTableBody) allTableBody.innerHTML = '<tr><td colspan="6">Error loading orders. Please try logging in again.</td></tr>';
     }
+}
+
+function updateSummary(orders, type) {
+    const count = orders.length;
+    const totalValue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+
+    document.getElementById(`${type}-orders-count`).textContent = count;
+    document.getElementById(`${type}-orders-value`).textContent = `₹${totalValue.toFixed(2)}`;
 }
 
 function populateOrdersTable(orders, tableId) {

@@ -12,6 +12,19 @@
         <button id="logout-btn" class="logout-button">Logout</button>
     </header>
     <main>
+        <div class="summary-container">
+            <div class="summary-box">
+                <h4>Open Orders</h4>
+                <p>Count: <span id="open-orders-count">0</span></p>
+                <p>Total Value: <span id="open-orders-value">₹0.00</span></p>
+            </div>
+            <div class="summary-box">
+                <h4>All Orders</h4>
+                <p>Count: <span id="all-orders-count">0</span></p>
+                <p>Total Value: <span id="all-orders-value">₹0.00</span></p>
+            </div>
+        </div>
+
         <div class="tab-container">
             <button class="tab-link active" data-tab="open-orders">Open Orders</button>
             <button class="tab-link" data-tab="all-orders">All Orders</button>
