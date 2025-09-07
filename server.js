@@ -179,7 +179,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-app.put('/api/admin/orders/:orderId', checkAuth, async (req, res) => {
+app.get('/api/admin/orders', checkAuth, async (req, res) => {
     try {
         const query = `SELECT * FROM \`${datasetId}.${ordersTableId}\` ORDER BY order_date DESC`;
         const [rows] = await bigquery.query(query);
